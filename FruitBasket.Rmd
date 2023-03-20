@@ -1,0 +1,109 @@
+# The Fruit Basket
+
+This a genetic algorithm written in R, used to solve a simple variant of the well known Knapsack problem.
+
+Imagine that you have a voucher for 1kg of products from a fruit store. You can only take whole fruits, no cutting is allowed. Let us assume that you don’t care about their aspect or taste. Your stance, today, equates to “more is better”, and you want to carry away as much weight as possible within the 1kg limit. At your disposal, you have an apple (130g), a banana (110g), a pineapple (600g), a pomelo (500g), an orange (200g) and a grapefruit (280g). Obviously, you can’t have all of them. 
+
+If you submit the problem to a genetic algorithm, it will start by creating a random population of candidate solutions. Every candidate contains a “genotype”, consisting, in our case, in a list of T’s and L’s. These letters determine, by order of appearance, if you are to take a fruit or leave it.
+
+## Load the Required R Packages and Set up a Basket of Fruits to Choose From
+	
+```{r}
+library(magrittr)
+library(stringr)
+App <- 130
+Ban <- 110
+Pin <- 600
+Pom <- 500
+Ora <- 200
+Gra <- 280
+basket <- c(App, Ban, Pin, Pom, Ora, Gra)
+```
+
+## Define the Wight Function
+
+```{r}
+weightbasket <- function(x) {
+	a <- strsplit(x,split="") %>% unlist %>%
+	str_replace_all("T","1") %>%
+	str_replace_all("L","0") %>% 
+	as.integer
+	(a * basket) %>% sum
+}
+# test the function
+weightbasket("TTLTTL")
+```
+
+# Test how many runs it takes in average to find the known solution
+
+```{r}
+
+genetic_algorithm <- function(maxgenerations=1000, testruns = F) {
+	pop <- data.frame(
+	candidate = sapply(1:10,function(anonymous) sample(x = c("T", "L"), size = 6, replace=T) %>% paste0(collapse=""))
+	)
+	pop$weight <- sapply(pop$candidate, function(x) weightbasket(x))
+	pop$fit <- ifelse(pop$weight <= 1000, pop$weight, 0)
+	evolution <- c()
+	for (run in 1:maxgenerations) {
+		print(run)
+		# selection
+		sel <- sample(1:10, 4, replace=F)
+		parents <- c(
+			ifelse(pop[sel[1],"fit"] > pop[sel[2],"fit"], sel[1], sel[2]),
+			ifelse(pop[sel[3],"fit"] > pop[sel[4],"fit"], sel[3], sel[4])
+		)
+		print("parents")
+		print(pop[parents,"candidate"])
+		# crossover
+		splitat <- sample(1:5, 1)
+		elements <- c(
+			substring(pop[parents,"candidate"],1,splitat),
+			substring(pop[parents,"candidate"],splitat+1)
+		)
+		offspring <- c(
+			paste0(elements[1],elements[4]),
+			paste0(elements[2],elements[3])
+		)
+		# mutations
+		swapat <- sample(1:6,sample(1:5,1)) # swap a random number of chromosomes between 1 and 5
+		mutant1 <- str_split(offspring[1],"") %>% unlist
+		mutant1[swapat] <- ifelse(mutant1[swapat] == "T", "L", "T")
+		mutant1 <- paste0(mutant1,collapse = "")
+		mutant2 <- str_split(offspring[2],"") %>% unlist
+		mutant2[swapat] <- ifelse(mutant2[swapat] == "T", "L", "T")
+		mutant2 <- paste0(mutant2,collapse = "")
+		mutants <- c(mutant1, mutant2)
+		# Add offspring and mutants
+		print("offspring and mutants")
+		popg <- data.frame(candidate = c(offspring,mutants))
+		popg$weight <- sapply(popg$candidate, function(x) weightbasket(x))
+		popg$fit <- ifelse(popg$weight <= 1000, popg$weight, 0)
+		print(popg)
+		pop <- rbind(pop,popg)
+		# Survival
+		for (i in 1:4) {
+			pop <- pop[-which.min(pop$fit),]
+		}
+		print(pop[which.max(pop$fit),c("candidate","fit")])
+		evolution[run] <- max(pop$fit)
+		if (testruns==T) runs[test] <<- run
+		if (max(pop$fit) == 990) break
+	}
+	if (testruns==F) plot(evolution,type = "l")
+}
+genetic_algorithm()
+
+```
+
+## Test how many 
+
+```{r}
+runs <- c()
+for (test in 1:1000) {
+	genetic_algorithm(testruns=T)
+}
+runs
+runs %>% mean
+hist(runs,breaks = 20)
+```
